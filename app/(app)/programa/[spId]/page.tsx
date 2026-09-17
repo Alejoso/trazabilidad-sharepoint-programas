@@ -7,7 +7,7 @@ import {
   SupabaseError,
 } from "@/lib/supabase";
 import { agruparDocumentos, indexarContenidos } from "@/lib/historial";
-import { fecha, hace, hashCorto, pesoArchivo } from "@/lib/format";
+import { fecha, hace, pesoArchivo } from "@/lib/format";
 import {
   Descargar,
   ErrorDatos,
@@ -81,7 +81,6 @@ export default async function ProgramaPage({
         <Titulo
           sub={
             <>
-              sp_id <span className="font-mono">{fila.sp_id}</span> ·{" "}
               {documentos.length}{" "}
               {documentos.length === 1 ? "documento" : "documentos"} ·{" "}
               {ediciones} {ediciones === 1 ? "edición" : "ediciones"}
@@ -156,13 +155,6 @@ export default async function ProgramaPage({
                     <EtiquetaTipo tipo={v.numero === 1 ? "alta" : "edicion"} />
                     <span className="text-sm whitespace-nowrap">
                       {fecha(v.visto_en)}
-                    </span>
-                    <span
-                      className="font-mono text-xs"
-                      style={{ color: "var(--texto-suave)" }}
-                      title={v.content_hash}
-                    >
-                      {hashCorto(v.content_hash)}
                     </span>
                     <span
                       className="text-xs tabular-nums"

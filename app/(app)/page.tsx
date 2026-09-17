@@ -172,12 +172,6 @@ export default async function Inicio({
                     >
                       <td className="px-4 py-3">
                         <EnlaceFila spId={f.sp_id} programa={f.programa} />
-                        <div
-                          className="mt-0.5 font-mono text-xs"
-                          style={{ color: "var(--texto-suave)" }}
-                        >
-                          sp_id {f.sp_id}
-                        </div>
                       </td>
                       <td className="px-4 py-3 tabular-nums">
                         {r?.documentos ?? 0}

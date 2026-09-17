@@ -160,7 +160,7 @@ export function IrAlPrograma({
   return (
     <Link
       href={`/programa/${spId}`}
-      aria-label={`Ver el historial de ${programa || `sp_id ${spId}`}`}
+      aria-label={`Ver el historial de ${programa || "este programa"}`}
       className="ir-a-programa inline-flex h-7 w-7 items-center justify-center rounded-full border"
       style={{ borderColor: "var(--borde)", color: "var(--acento)" }}
     >

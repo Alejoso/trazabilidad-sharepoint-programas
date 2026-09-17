@@ -52,10 +52,6 @@ export function pesoArchivo(bytes: number | null) {
   return `${n.toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
 }
 
-export function hashCorto(hash: string) {
-  return hash.slice(0, 10);
-}
-
 /** El nombre llega del script con la extensión incluida. */
 export function extension(nombre: string) {
   const punto = nombre.lastIndexOf(".");

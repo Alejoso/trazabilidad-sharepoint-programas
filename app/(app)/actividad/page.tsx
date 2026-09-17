@@ -6,7 +6,7 @@ import {
   SupabaseError,
 } from "@/lib/supabase";
 import { agruparDocumentos, indexarContenidos } from "@/lib/historial";
-import { diaLocal, fecha, hace, hashCorto, pesoArchivo } from "@/lib/format";
+import { diaLocal, fecha, hace, pesoArchivo } from "@/lib/format";
 import type { Evento } from "@/lib/types";
 import { Filtros, leerFiltros } from "@/components/filtros";
 import {
@@ -233,15 +233,12 @@ export default async function ActividadPage({
                           href={`/programa/${e.sp_id}`}
                           className="enlace-programa font-medium underline underline-offset-2"
                         >
-                          {e.programa || `sp_id ${e.sp_id}`}
+                          {e.programa || "Sin título"}
                         </Link>
                         {e.modificado_por ? <span>{e.modificado_por}</span> : null}
                         <span>{hace(e.visto_en)}</span>
                         <span className="tabular-nums">
                           {pesoArchivo(e.bytes)}
-                        </span>
-                        <span className="font-mono" title={e.content_hash}>
-                          {hashCorto(e.content_hash)}
                         </span>
                       </div>
                     </li>

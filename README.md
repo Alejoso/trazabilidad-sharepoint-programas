@@ -15,19 +15,29 @@ Dos piezas que comparten la misma base de datos:
 | `contenidos` | Un archivo único, identificado por su `content_hash`. |
 | `documentos_vistos` | Cada vez que se vio el documento *nombre* de la fila *sp_id* con el contenido *content_hash*. |
 
-La app deriva el historial de `documentos_vistos`: para un mismo
-`(sp_id, nombre)`, **cada `content_hash` distinto es una versión**, numerada por
-la primera vez que se vio. Volver a ver el mismo hash no cuenta como edición,
-así que ejecutar `main.py` varias veces no infla las cifras.
+La app deriva el historial de `documentos_vistos`. **Las versiones se cuentan
+por fila, no por nombre de archivo**: se toman todos los documentos de un mismo
+`sp_id`, se ordenan por fecha y
 
-- v1 → «Versión original»
-- v2 en adelante → «Edición»
+- el más antiguo es la **primera versión** (v1),
+- todo lo posterior es una **edición** (v2, v3, …), aunque el archivo se llame
+  distinto.
+
+Volver a ver el mismo archivo con el mismo contenido no cuenta como edición, así
+que ejecutar `main.py` varias veces no infla las cifras. La deduplicación mira el
+par `(nombre, content_hash)` para no fundir dos documentos distintos que
+casualmente tengan los mismos bytes.
+
+Dos cosas que conviene tener presentes al leer las cifras: el número de ediciones
+es un mínimo, porque sólo se ve lo que `main.py` alcanzó a observar entre
+ejecuciones; y «primera versión» quiere decir la copia más antigua registrada,
+no necesariamente la original del documento.
 
 ## Páginas
 
-- `/` — listado de programas con documentos, ediciones y última edición real.
-- `/programa/[spId]` — metadatos de la fila y, por cada documento, todas sus
-  versiones con fecha, tamaño, hash y enlace de descarga.
+- `/` — listado de programas con versiones, ediciones y última edición.
+- `/programa/[spId]` — metadatos de la fila y su historial completo: una sola
+  línea de tiempo con cada versión, su fecha, su tamaño y su enlace de descarga.
 - `/actividad` — línea de tiempo global, agrupada por día, filtrable por texto
   y por tipo (altas / ediciones).
 

@@ -1,50 +1,42 @@
-import type { Contenido, Documento, DocumentoVisto, Version } from "./types";
+import type { Contenido, DocumentoVisto, Version } from "./types";
 
 /**
- * Agrupa los registros de `documentos_vistos` por nombre de documento y
- * convierte cada content_hash distinto en una versión numerada.
+ * Convierte los registros de una fila en una lista de versiones numerada.
  *
- * Un mismo hash puede aparecer varias veces (el script lo vuelve a ver en
- * ejecuciones posteriores); eso no es una edición, así que nos quedamos con
- * la primera vez que se vio ese contenido.
+ * La numeración es por fila, no por nombre de archivo: el documento más
+ * antiguo de la fila es la primera versión y todo lo posterior cuenta como
+ * edición, aunque el archivo se llame distinto.
+ *
+ * Un mismo archivo puede aparecer varias veces con el mismo contenido (el
+ * script lo vuelve a ver en ejecuciones posteriores); eso no es una edición,
+ * así que de cada par (nombre, contenido) nos quedamos con la primera vez que
+ * se vio. La deduplicación mira el nombre además del hash para no fundir dos
+ * documentos distintos que casualmente tengan los mismos bytes.
  */
-export function agruparDocumentos(
+export function versionesDeFila(
   vistos: DocumentoVisto[],
   contenidos: Map<string, Contenido>,
-): Documento[] {
-  const porNombre = new Map<string, Map<string, string>>();
+): Version[] {
+  const primeras = new Map<string, DocumentoVisto>();
 
   for (const v of vistos) {
-    let hashes = porNombre.get(v.nombre);
-    if (!hashes) porNombre.set(v.nombre, (hashes = new Map()));
-
-    const previo = hashes.get(v.content_hash);
-    if (previo === undefined || v.visto_en < previo) {
-      hashes.set(v.content_hash, v.visto_en);
+    const clave = `${v.nombre}|${v.content_hash}`;
+    const previo = primeras.get(clave);
+    if (previo === undefined || v.visto_en < previo.visto_en) {
+      primeras.set(clave, v);
     }
   }
 
-  const documentos: Documento[] = [];
-
-  for (const [nombre, hashes] of porNombre) {
-    const versiones: Version[] = [...hashes]
-      .map(([content_hash, visto_en]) => ({ content_hash, visto_en }))
-      .sort((a, b) => a.visto_en.localeCompare(b.visto_en))
-      .map((v, i) => ({
-        ...v,
-        numero: i + 1,
-        url: contenidos.get(v.content_hash)?.url ?? null,
-        bytes: contenidos.get(v.content_hash)?.bytes ?? null,
-      }));
-
-    documentos.push({
-      nombre,
-      versiones,
-      ultimoCambio: versiones[versiones.length - 1].visto_en,
-    });
-  }
-
-  return documentos.sort((a, b) => b.ultimoCambio.localeCompare(a.ultimoCambio));
+  return [...primeras.values()]
+    .sort((a, b) => a.visto_en.localeCompare(b.visto_en))
+    .map((v, i) => ({
+      nombre: v.nombre,
+      content_hash: v.content_hash,
+      visto_en: v.visto_en,
+      numero: i + 1,
+      url: contenidos.get(v.content_hash)?.url ?? null,
+      bytes: contenidos.get(v.content_hash)?.bytes ?? null,
+    }));
 }
 
 export function indexarContenidos(contenidos: Contenido[]) {

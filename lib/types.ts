@@ -21,35 +21,22 @@ export type DocumentoVisto = {
   visto_en: string;
 };
 
-/** Una versión concreta de un documento: el contenido más cuándo se vio. */
+/** Una versión de la fila: el documento que se vio y cuándo. */
 export type Version = {
+  nombre: string;
   content_hash: string;
   visto_en: string;
   url: string | null;
   bytes: number | null;
-  /** 1 = versión original, 2 = primera edición, etc. */
+  /** 1 = primera versión de la fila, 2 en adelante = ediciones. */
   numero: number;
 };
 
-/** Un documento (por nombre) dentro de una fila, con todas sus versiones. */
-export type Documento = {
-  nombre: string;
-  versiones: Version[];
-  /** visto_en de la versión más reciente. */
-  ultimoCambio: string;
-};
-
-/** Un evento del historial: alta o edición de un documento. */
-export type Evento = {
+/** Una versión situada en la línea de tiempo global, con los datos de su fila. */
+export type Evento = Version & {
   sp_id: number;
   programa: string | null;
   /** Viene de la fila, no del documento: es quien tocó el programa por última vez. */
   modificado_por: string | null;
-  nombre: string;
-  content_hash: string;
-  visto_en: string;
-  url: string | null;
-  bytes: number | null;
-  numero: number;
   tipo: "alta" | "edicion";
 };

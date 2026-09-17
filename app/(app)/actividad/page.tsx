@@ -5,7 +5,7 @@ import {
   getFilas,
   SupabaseError,
 } from "@/lib/supabase";
-import { agruparDocumentos, indexarContenidos } from "@/lib/historial";
+import { indexarContenidos, versionesDeFila } from "@/lib/historial";
 import { diaLocal, fecha, hace, pesoArchivo } from "@/lib/format";
 import type { Evento } from "@/lib/types";
 import { Filtros, leerFiltros } from "@/components/filtros";
@@ -70,29 +70,21 @@ export default async function ActividadPage({
     else porFila.set(v.sp_id, [v]);
   }
 
-  // El número de versión depende del historial completo de cada documento,
-  // así que agrupamos fila por fila antes de aplanar todo en una sola línea
-  // de tiempo.
+  // El número de versión depende del historial completo de la fila, así que
+  // numeramos fila por fila antes de aplanar todo en una sola línea de tiempo.
   const datosFila = new Map(filas.map((f) => [f.sp_id, f]));
   let eventos: Evento[] = [];
 
   for (const [spId, suyos] of porFila) {
     const fila = datosFila.get(spId);
-    for (const doc of agruparDocumentos(suyos, indice)) {
-      for (const v of doc.versiones) {
-        eventos.push({
-          sp_id: spId,
-          programa: fila?.programa ?? null,
-          modificado_por: fila?.modificado_por ?? null,
-          nombre: doc.nombre,
-          content_hash: v.content_hash,
-          visto_en: v.visto_en,
-          url: v.url,
-          bytes: v.bytes,
-          numero: v.numero,
-          tipo: v.numero === 1 ? "alta" : "edicion",
-        });
-      }
+    for (const v of versionesDeFila(suyos, indice)) {
+      eventos.push({
+        ...v,
+        sp_id: spId,
+        programa: fila?.programa ?? null,
+        modificado_por: fila?.modificado_por ?? null,
+        tipo: v.numero === 1 ? "alta" : "edicion",
+      });
     }
   }
 

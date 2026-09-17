@@ -20,7 +20,6 @@ import {
 export const dynamic = "force-dynamic";
 
 type Resumen = {
-  documentos: number;
   versiones: number;
   ediciones: number;
   ultimo: string | null;
@@ -50,37 +49,28 @@ export default async function Inicio({
     );
   }
 
+  // Mismo criterio que lib/historial.ts: las versiones se cuentan por fila y
+  // volver a ver el mismo archivo con el mismo contenido no suma ninguna.
   const resumenes = new Map<number, Resumen>();
   const versionesVistas = new Set<string>();
-  const documentosVistos = new Set<string>();
 
   for (const v of vistos) {
+    const clave = `${v.sp_id}|${v.nombre}|${v.content_hash}`;
+    if (versionesVistas.has(clave)) continue;
+    versionesVistas.add(clave);
+
     const r = resumenes.get(v.sp_id) ?? {
-      documentos: 0,
       versiones: 0,
       ediciones: 0,
       ultimo: null,
     };
-
-    const claveDoc = `${v.sp_id}|${v.nombre}`;
-    if (!documentosVistos.has(claveDoc)) {
-      documentosVistos.add(claveDoc);
-      r.documentos++;
-    }
-
-    // `ultimo` sólo avanza con contenido nuevo: volver a ver el mismo hash no
-    // es una edición y no debe rejuvenecer la fila.
-    const claveVersion = `${claveDoc}|${v.content_hash}`;
-    if (!versionesVistas.has(claveVersion)) {
-      versionesVistas.add(claveVersion);
-      r.versiones++;
-      if (r.ultimo === null || v.visto_en > r.ultimo) r.ultimo = v.visto_en;
-    }
-
+    r.versiones++;
+    if (r.ultimo === null || v.visto_en > r.ultimo) r.ultimo = v.visto_en;
     resumenes.set(v.sp_id, r);
   }
 
-  for (const r of resumenes.values()) r.ediciones = r.versiones - r.documentos;
+  // La más antigua de la fila es la primera versión; el resto son ediciones.
+  for (const r of resumenes.values()) r.ediciones = Math.max(0, r.versiones - 1);
 
   // La fecha por la que se filtra es la misma que muestra la columna.
   const fechaDe = (spId: number, respaldo: string | null) =>
@@ -120,7 +110,7 @@ export default async function Inicio({
 
       <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Estadistica etiqueta="Programas" valor={filas.length} />
-        <Estadistica etiqueta="Documentos" valor={documentosVistos.size} />
+        <Estadistica etiqueta="Versiones" valor={versionesVistas.size} />
         <Estadistica etiqueta="Ediciones" valor={totalEdiciones} />
         <Estadistica etiqueta="Archivos únicos" valor={contenidos.length} />
       </div>
@@ -151,7 +141,7 @@ export default async function Inicio({
                   }}
                 >
                   <th className="px-4 py-3 font-medium">Programa</th>
-                  <th className="px-4 py-3 font-medium">Docs</th>
+                  <th className="px-4 py-3 font-medium">Versiones</th>
                   <th className="px-4 py-3 font-medium">Ediciones</th>
                   <th className="px-4 py-3 font-medium">Modificado por</th>
                   <th className="px-4 py-3 font-medium">Última edición</th>
@@ -174,7 +164,7 @@ export default async function Inicio({
                         <EnlaceFila spId={f.sp_id} programa={f.programa} />
                       </td>
                       <td className="px-4 py-3 tabular-nums">
-                        {r?.documentos ?? 0}
+                        {r?.versiones ?? 0}
                       </td>
                       <td className="px-4 py-3 tabular-nums">
                         {r?.ediciones ?? 0}

@@ -6,7 +6,7 @@ import {
   getFila,
   SupabaseError,
 } from "@/lib/supabase";
-import { agruparDocumentos, indexarContenidos } from "@/lib/historial";
+import { indexarContenidos, versionesDeFila } from "@/lib/historial";
 import { fecha, hace, pesoArchivo } from "@/lib/format";
 import {
   Descargar,
@@ -50,8 +50,13 @@ export default async function ProgramaPage({
 
   let fila, vistos, contenidos;
   try {
-    [fila, vistos] = await Promise.all([getFila(spId), getDocumentosVistos(spId)]);
-    contenidos = await getContenidos([...new Set(vistos.map((v) => v.content_hash))]);
+    [fila, vistos] = await Promise.all([
+      getFila(spId),
+      getDocumentosVistos(spId),
+    ]);
+    contenidos = await getContenidos([
+      ...new Set(vistos.map((v) => v.content_hash)),
+    ]);
   } catch (e) {
     return (
       <ErrorDatos
@@ -64,8 +69,8 @@ export default async function ProgramaPage({
 
   if (!fila) notFound();
 
-  const documentos = agruparDocumentos(vistos, indexarContenidos(contenidos));
-  const ediciones = documentos.reduce((n, d) => n + d.versiones.length - 1, 0);
+  const versiones = versionesDeFila(vistos, indexarContenidos(contenidos));
+  const ediciones = Math.max(0, versiones.length - 1);
 
   return (
     <>
@@ -81,9 +86,9 @@ export default async function ProgramaPage({
         <Titulo
           sub={
             <>
-              {documentos.length}{" "}
-              {documentos.length === 1 ? "documento" : "documentos"} ·{" "}
-              {ediciones} {ediciones === 1 ? "edición" : "ediciones"}
+              {versiones.length}{" "}
+              {versiones.length === 1 ? "versión" : "versiones"} · {ediciones}{" "}
+              {ediciones === 1 ? "edición" : "ediciones"}
             </>
           }
         >
@@ -106,71 +111,51 @@ export default async function ProgramaPage({
       </Panel>
 
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide">
-        Historial de documentos
+        Historial
       </h2>
 
-      {documentos.length === 0 ? (
+      {versiones.length === 0 ? (
         <Vacio>
-          Esta fila no tiene documentos registrados. Puede que su sidecar se
+          Este programa no tiene documentos registrados. Puede que su sidecar se
           procesara sin binarios asociados.
         </Vacio>
       ) : (
-        <div className="space-y-4">
-          {documentos.map((doc) => (
-            <Panel key={doc.nombre} className="overflow-hidden">
-              <div
-                className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-5 py-3"
-                style={{
-                  borderColor: "var(--borde)",
-                  background: "var(--panel-alt)",
-                }}
+        <Panel className="overflow-hidden">
+          <ol>
+            {[...versiones].reverse().map((v) => (
+              <li
+                key={`${v.nombre}|${v.content_hash}`}
+                className="border-b px-5 py-3 last:border-0"
+                style={{ borderColor: "var(--borde)" }}
               >
-                <Extension nombre={doc.nombre} />
-                <span className="text-sm font-medium break-all">
-                  {doc.nombre}
-                </span>
-                <span
-                  className="ml-auto text-xs whitespace-nowrap"
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span
+                    className="w-7 shrink-0 font-mono text-xs tabular-nums"
+                    style={{ color: "var(--texto-suave)" }}
+                  >
+                    v{v.numero}
+                  </span>
+                  <EtiquetaTipo tipo={v.numero === 1 ? "alta" : "edicion"} />
+                  <Extension nombre={v.nombre} />
+                  <span className="text-sm font-medium break-all">
+                    {v.nombre}
+                  </span>
+                  <span className="ml-auto">
+                    <Descargar url={v.url} />
+                  </span>
+                </div>
+                <div
+                  className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 pl-10 text-xs"
                   style={{ color: "var(--texto-suave)" }}
                 >
-                  {doc.versiones.length}{" "}
-                  {doc.versiones.length === 1 ? "versión" : "versiones"} ·
-                  última {hace(doc.ultimoCambio)}
-                </span>
-              </div>
-
-              <ol className="px-5 py-2">
-                {[...doc.versiones].reverse().map((v) => (
-                  <li
-                    key={v.content_hash}
-                    className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b py-3 last:border-0"
-                    style={{ borderColor: "var(--borde)" }}
-                  >
-                    <span
-                      className="w-8 shrink-0 font-mono text-xs tabular-nums"
-                      style={{ color: "var(--texto-suave)" }}
-                    >
-                      v{v.numero}
-                    </span>
-                    <EtiquetaTipo tipo={v.numero === 1 ? "alta" : "edicion"} />
-                    <span className="text-sm whitespace-nowrap">
-                      {fecha(v.visto_en)}
-                    </span>
-                    <span
-                      className="text-xs tabular-nums"
-                      style={{ color: "var(--texto-suave)" }}
-                    >
-                      {pesoArchivo(v.bytes)}
-                    </span>
-                    <span className="ml-auto">
-                      <Descargar url={v.url} />
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </Panel>
-          ))}
-        </div>
+                  <span>{fecha(v.visto_en)}</span>
+                  <span>{hace(v.visto_en)}</span>
+                  <span className="tabular-nums">{pesoArchivo(v.bytes)}</span>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </Panel>
       )}
     </>
   );

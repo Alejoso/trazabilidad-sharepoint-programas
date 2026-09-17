@@ -51,3 +51,39 @@ body {
   color: var(--texto);
   -webkit-font-smoothing: antialiased;
 }
+
+/* Los colores viven en variables CSS, así que los estados :hover no se pueden
+   expresar con estilos en línea y se declaran aquí. */
+.fila {
+  transition: background 120ms ease;
+}
+
+.fila:hover {
+  background: var(--panel-alt);
+}
+
+.fila:hover .ir-a-programa {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+.ir-a-programa {
+  opacity: 0.45;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.ir-a-programa:hover,
+.ir-a-programa:focus-visible {
+  opacity: 1;
+}
+
+.enlace-programa {
+  color: var(--acento);
+  text-decoration-color: color-mix(in srgb, var(--acento) 35%, transparent);
+}
+
+.enlace-programa:hover {
+  text-decoration-color: currentColor;
+}

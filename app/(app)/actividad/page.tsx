@@ -6,9 +6,9 @@ import {
   SupabaseError,
 } from "@/lib/supabase";
 import { agruparDocumentos, indexarContenidos } from "@/lib/historial";
-import { fecha, hace, hashCorto, pesoArchivo } from "@/lib/format";
+import { diaLocal, fecha, hace, hashCorto, pesoArchivo } from "@/lib/format";
 import type { Evento } from "@/lib/types";
-import { Buscador } from "@/components/buscador";
+import { Filtros, leerFiltros } from "@/components/filtros";
 import {
   Descargar,
   ErrorDatos,
@@ -23,11 +23,11 @@ export const dynamic = "force-dynamic";
 
 const POR_PAGINA = 100;
 
-/** Agrupa los eventos por día para separar la lista con encabezados. */
+/** Agrupa los eventos por día (hora de Bogotá) para separar la lista. */
 function porDia(eventos: Evento[]) {
   const dias = new Map<string, Evento[]>();
   for (const e of eventos) {
-    const dia = e.visto_en.slice(0, 10);
+    const dia = diaLocal(e.visto_en) ?? e.visto_en.slice(0, 10);
     const lista = dias.get(dia);
     if (lista) lista.push(e);
     else dias.set(dia, [e]);
@@ -38,10 +38,10 @@ function porDia(eventos: Evento[]) {
 export default async function ActividadPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tipo?: string; pagina?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const sp = await searchParams;
-  const q = (sp.q ?? "").trim();
+  const filtros = leerFiltros(sp);
   const filtroTipo = sp.tipo === "alta" || sp.tipo === "edicion" ? sp.tipo : null;
   const pagina = Math.max(1, Number(sp.pagina) || 1);
 
@@ -73,15 +73,17 @@ export default async function ActividadPage({
   // El número de versión depende del historial completo de cada documento,
   // así que agrupamos fila por fila antes de aplanar todo en una sola línea
   // de tiempo.
-  const nombresFila = new Map(filas.map((f) => [f.sp_id, f.programa]));
+  const datosFila = new Map(filas.map((f) => [f.sp_id, f]));
   let eventos: Evento[] = [];
 
   for (const [spId, suyos] of porFila) {
+    const fila = datosFila.get(spId);
     for (const doc of agruparDocumentos(suyos, indice)) {
       for (const v of doc.versiones) {
         eventos.push({
           sp_id: spId,
-          programa: nombresFila.get(spId) ?? null,
+          programa: fila?.programa ?? null,
+          modificado_por: fila?.modificado_por ?? null,
           nombre: doc.nombre,
           content_hash: v.content_hash,
           visto_en: v.visto_en,
@@ -96,25 +98,39 @@ export default async function ActividadPage({
 
   eventos.sort((a, b) => b.visto_en.localeCompare(a.visto_en));
 
+  const total = eventos.length;
+
   if (filtroTipo) eventos = eventos.filter((e) => e.tipo === filtroTipo);
-  if (q) {
-    const aguja = q.toLowerCase();
+
+  if (filtros.q) {
+    const aguja = filtros.q.toLowerCase();
     eventos = eventos.filter(
       (e) =>
-        e.nombre.toLowerCase().includes(aguja) ||
         (e.programa ?? "").toLowerCase().includes(aguja) ||
-        String(e.sp_id).includes(aguja),
+        (e.modificado_por ?? "").toLowerCase().includes(aguja),
     );
   }
 
-  const total = eventos.length;
-  const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+  if (filtros.desde || filtros.hasta) {
+    eventos = eventos.filter((e) => {
+      const dia = diaLocal(e.visto_en);
+      if (!dia) return false;
+      if (filtros.desde && dia < filtros.desde) return false;
+      if (filtros.hasta && dia > filtros.hasta) return false;
+      return true;
+    });
+  }
+
+  const filtrados = eventos.length;
+  const paginas = Math.max(1, Math.ceil(filtrados / POR_PAGINA));
   const actual = Math.min(pagina, paginas);
   const visibles = eventos.slice((actual - 1) * POR_PAGINA, actual * POR_PAGINA);
 
   const enlace = (extra: Record<string, string | null>) => {
     const p = new URLSearchParams();
-    if (q) p.set("q", q);
+    if (filtros.q) p.set("q", filtros.q);
+    if (filtros.desde) p.set("desde", filtros.desde);
+    if (filtros.hasta) p.set("hasta", filtros.hasta);
     if (filtroTipo) p.set("tipo", filtroTipo);
     for (const [k, v] of Object.entries(extra)) {
       if (v === null) p.delete(k);
@@ -130,13 +146,19 @@ export default async function ActividadPage({
         Actividad
       </Titulo>
 
-      <Buscador valor={q} placeholder="Filtrar por documento, programa o sp_id…" />
+      <Filtros
+        valores={filtros}
+        ruta="/actividad"
+        placeholder="Buscar por programa o persona…"
+        etiquetaFecha="Fecha del cambio"
+        ocultos={filtroTipo ? { tipo: filtroTipo } : undefined}
+      />
 
       <div className="mb-6 flex flex-wrap items-center gap-2 text-xs">
         {(
           [
             [null, "Todo"],
-            ["alta", "Sólo altas"],
+            ["alta", "Primera versión"],
             ["edicion", "Sólo ediciones"],
           ] as const
         ).map(([valor, texto]) => {
@@ -145,6 +167,7 @@ export default async function ActividadPage({
             <Link
               key={texto}
               href={enlace({ tipo: valor, pagina: null })}
+              aria-current={activo ? "true" : undefined}
               className="rounded-full border px-3 py-1 font-medium transition-opacity hover:opacity-70"
               style={{
                 borderColor: activo ? "var(--acento)" : "var(--borde)",
@@ -156,8 +179,13 @@ export default async function ActividadPage({
             </Link>
           );
         })}
-        <span className="ml-auto tabular-nums" style={{ color: "var(--texto-suave)" }}>
-          {total} {total === 1 ? "evento" : "eventos"}
+        <span
+          className="ml-auto tabular-nums"
+          style={{ color: "var(--texto-suave)" }}
+        >
+          {filtrados === total
+            ? `${total} ${total === 1 ? "evento" : "eventos"}`
+            : `${filtrados} de ${total} eventos`}
         </span>
       </div>
 
@@ -203,10 +231,11 @@ export default async function ActividadPage({
                       >
                         <Link
                           href={`/programa/${e.sp_id}`}
-                          className="underline underline-offset-2 transition-opacity hover:opacity-70"
+                          className="enlace-programa font-medium underline underline-offset-2"
                         >
                           {e.programa || `sp_id ${e.sp_id}`}
                         </Link>
+                        {e.modificado_por ? <span>{e.modificado_por}</span> : null}
                         <span>{hace(e.visto_en)}</span>
                         <span className="tabular-nums">
                           {pesoArchivo(e.bytes)}

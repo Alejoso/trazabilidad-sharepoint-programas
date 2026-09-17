@@ -61,3 +61,21 @@ export function extension(nombre: string) {
   const punto = nombre.lastIndexOf(".");
   return punto > 0 ? nombre.slice(punto + 1).toLowerCase() : "";
 }
+
+const DIA_LOCAL = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Bogota",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/**
+ * Fecha AAAA-MM-DD en hora de Bogotá. Los timestamps llegan en UTC, así que
+ * recortar la cadena ISO daría el día equivocado para las horas de la noche;
+ * los filtros por fecha tienen que usar el mismo día que se ve en pantalla.
+ */
+export function diaLocal(iso: string | null) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : DIA_LOCAL.format(d);
+}

@@ -67,7 +67,7 @@ export function EtiquetaTipo({ tipo }: { tipo: "alta" | "edicion" }) {
         background: alta ? "var(--alta-suave)" : "var(--edicion-suave)",
       }}
     >
-      {alta ? "Versión original" : "Edición"}
+      {alta ? "Primera versión" : "Edición"}
     </span>
   );
 }
@@ -142,11 +142,41 @@ export function EnlaceFila({
   return (
     <Link
       href={`/programa/${spId}`}
-      className="font-medium transition-opacity hover:opacity-70"
+      className="enlace-programa font-medium underline underline-offset-2"
     >
-      {programa || (
-        <span style={{ color: "var(--texto-suave)" }}>Sin título</span>
-      )}
+      {programa || "Sin título"}
+    </Link>
+  );
+}
+
+/** Segundo destino al mismo sitio, al final de la fila, para dar dónde pulsar. */
+export function IrAlPrograma({
+  spId,
+  programa,
+}: {
+  spId: number;
+  programa: string | null;
+}) {
+  return (
+    <Link
+      href={`/programa/${spId}`}
+      aria-label={`Ver el historial de ${programa || `sp_id ${spId}`}`}
+      className="ir-a-programa inline-flex h-7 w-7 items-center justify-center rounded-full border"
+      style={{ borderColor: "var(--borde)", color: "var(--acento)" }}
+    >
+      <svg
+        viewBox="0 0 16 16"
+        width="13"
+        height="13"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M6 3.5 10.5 8 6 12.5" />
+      </svg>
     </Link>
   );
 }

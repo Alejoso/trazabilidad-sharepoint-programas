@@ -43,6 +43,8 @@ export type Documento = {
 export type Evento = {
   sp_id: number;
   programa: string | null;
+  /** Viene de la fila, no del documento: es quien tocó el programa por última vez. */
+  modificado_por: string | null;
   nombre: string;
   content_hash: string;
   visto_en: string;

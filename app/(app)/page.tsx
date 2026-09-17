@@ -5,12 +5,13 @@ import {
   getFilas,
   SupabaseError,
 } from "@/lib/supabase";
-import { fecha, hace } from "@/lib/format";
-import { Buscador } from "@/components/buscador";
+import { diaLocal, fecha, hace } from "@/lib/format";
+import { Filtros, hayFiltros, leerFiltros } from "@/components/filtros";
 import {
   EnlaceFila,
   ErrorDatos,
   Estadistica,
+  IrAlPrograma,
   Panel,
   Titulo,
   Vacio,
@@ -28,9 +29,9 @@ type Resumen = {
 export default async function Inicio({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const q = ((await searchParams).q ?? "").trim();
+  const filtros = leerFiltros(await searchParams);
 
   let filas, vistos, contenidos;
   try {
@@ -49,8 +50,6 @@ export default async function Inicio({
     );
   }
 
-  // Un documento puede volver a verse con el mismo contenido; para contar
-  // versiones sólo valen los pares (nombre, content_hash) distintos.
   const resumenes = new Map<number, Resumen>();
   const versionesVistas = new Set<string>();
   const documentosVistos = new Set<string>();
@@ -83,16 +82,30 @@ export default async function Inicio({
 
   for (const r of resumenes.values()) r.ediciones = r.versiones - r.documentos;
 
-  const aguja = q.toLowerCase();
-  const visibles = q
-    ? filas.filter(
-        (f) =>
-          String(f.sp_id).includes(aguja) ||
-          (f.programa ?? "").toLowerCase().includes(aguja) ||
-          (f.modificado_por ?? "").toLowerCase().includes(aguja) ||
-          (f.creado_por ?? "").toLowerCase().includes(aguja),
-      )
-    : filas;
+  // La fecha por la que se filtra es la misma que muestra la columna.
+  const fechaDe = (spId: number, respaldo: string | null) =>
+    resumenes.get(spId)?.ultimo ?? respaldo;
+
+  const aguja = filtros.q.toLowerCase();
+  const visibles = filas.filter((f) => {
+    if (
+      aguja &&
+      !(f.programa ?? "").toLowerCase().includes(aguja) &&
+      !(f.modificado_por ?? "").toLowerCase().includes(aguja) &&
+      !(f.creado_por ?? "").toLowerCase().includes(aguja)
+    ) {
+      return false;
+    }
+
+    if (filtros.desde || filtros.hasta) {
+      const dia = diaLocal(fechaDe(f.sp_id, f.actualizado_en));
+      if (!dia) return false;
+      if (filtros.desde && dia < filtros.desde) return false;
+      if (filtros.hasta && dia > filtros.hasta) return false;
+    }
+
+    return true;
+  });
 
   const totalEdiciones = [...resumenes.values()].reduce(
     (n, r) => n + r.ediciones,
@@ -112,13 +125,18 @@ export default async function Inicio({
         <Estadistica etiqueta="Archivos únicos" valor={contenidos.length} />
       </div>
 
-      <Buscador valor={q} placeholder="Buscar por programa, autor o sp_id…" />
+      <Filtros
+        valores={filtros}
+        ruta="/"
+        placeholder="Buscar por programa o persona…"
+        etiquetaFecha="Última edición"
+      />
 
       {visibles.length === 0 ? (
         <Vacio>
           {filas.length === 0
             ? "Todavía no hay filas registradas. Ejecuta main.py para poblar la base."
-            : `Ningún programa coincide con «${q}».`}
+            : "Ningún programa coincide con los filtros."}
         </Vacio>
       ) : (
         <Panel className="overflow-hidden">
@@ -137,16 +155,19 @@ export default async function Inicio({
                   <th className="px-4 py-3 font-medium">Ediciones</th>
                   <th className="px-4 py-3 font-medium">Modificado por</th>
                   <th className="px-4 py-3 font-medium">Última edición</th>
+                  <th className="px-4 py-3">
+                    <span className="sr-only">Ver historial</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {visibles.map((f) => {
                   const r = resumenes.get(f.sp_id);
-                  const ultimo = r?.ultimo ?? f.actualizado_en;
+                  const ultimo = fechaDe(f.sp_id, f.actualizado_en);
                   return (
                     <tr
                       key={f.sp_id}
-                      className="border-b last:border-0"
+                      className="fila border-b last:border-0"
                       style={{ borderColor: "var(--borde)" }}
                     >
                       <td className="px-4 py-3">
@@ -178,6 +199,9 @@ export default async function Inicio({
                           {hace(ultimo)}
                         </div>
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <IrAlPrograma spId={f.sp_id} programa={f.programa} />
+                      </td>
                     </tr>
                   );
                 })}
@@ -186,6 +210,12 @@ export default async function Inicio({
           </div>
         </Panel>
       )}
+
+      {hayFiltros(filtros) && visibles.length > 0 ? (
+        <p className="mt-3 text-xs" style={{ color: "var(--texto-suave)" }}>
+          {visibles.length} de {filas.length} programas.
+        </p>
+      ) : null}
 
       <p className="mt-4 text-xs" style={{ color: "var(--texto-suave)" }}>
         ¿Buscas los cambios más recientes de todos los programas a la vez?{" "}

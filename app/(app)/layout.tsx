@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Nav } from "@/components/nav";
 import { cerrarSesion } from "../login/actions";
 
 export default function AppLayout({
@@ -15,25 +16,9 @@ export default function AppLayout({
       >
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
           <Link href="/" className="text-sm font-semibold tracking-tight">
-            Trazabilidad{" "}
-            <span style={{ color: "var(--texto-suave)" }}>· programas</span>
+            Trazabilidad
           </Link>
-          <nav className="flex items-center gap-4 text-sm">
-            <Link
-              href="/"
-              className="transition-opacity hover:opacity-70"
-              style={{ color: "var(--texto-suave)" }}
-            >
-              Programas
-            </Link>
-            <Link
-              href="/actividad"
-              className="transition-opacity hover:opacity-70"
-              style={{ color: "var(--texto-suave)" }}
-            >
-              Actividad
-            </Link>
-          </nav>
+          <Nav />
           <form action={cerrarSesion} className="ml-auto">
             <button
               type="submit"

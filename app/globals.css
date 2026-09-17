@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+}
+
+:root {
+  --fondo: #f7f7f8;
+  --panel: #ffffff;
+  --panel-alt: #fafafa;
+  --borde: #e4e4e7;
+  --borde-fuerte: #d4d4d8;
+  --texto: #18181b;
+  --texto-suave: #71717a;
+  --acento: #4f46e5;
+  --acento-suave: #eef2ff;
+  --alta: #0f766e;
+  --alta-suave: #ccfbf1;
+  --edicion: #b45309;
+  --edicion-suave: #fef3c7;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #0b0b0e;
+    --panel: #141418;
+    --panel-alt: #1a1a20;
+    --borde: #27272e;
+    --borde-fuerte: #3a3a44;
+    --texto: #f4f4f5;
+    --texto-suave: #a1a1aa;
+    --acento: #a5b4fc;
+    --acento-suave: #1e1b4b;
+    --alta: #5eead4;
+    --alta-suave: #042f2e;
+    --edicion: #fcd34d;
+    --edicion-suave: #3b2705;
+    color-scheme: dark;
+  }
+}
+
+html {
+  background: var(--fondo);
+}
+
+body {
+  background: var(--fondo);
+  color: var(--texto);
+  -webkit-font-smoothing: antialiased;
+}
